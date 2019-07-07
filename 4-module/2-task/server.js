@@ -42,26 +42,42 @@ function postHandler(req, res, pathname, filepath) {
 }
 
 function writeFile(req, res, filepath) {
+  let error = null;
+
+  function errorHandler(err) {
+    error = err || true;
+    endStreams(limitStream, writeStream);
+  }
+
   const limitStream = new LimitSizeStream({limit: 1000000});
   const writeStream = fs.createWriteStream(filepath);
-  pipeline(
-      req,
-      limitStream,
-      writeStream,
-      (err) => writeFileHandler(err, req, res, filepath)
-  );
+  req.on('aborted', errorHandler);
+  limitStream.on('error', errorHandler);
+  writeStream.on('error', errorHandler);
+  writeStream.on('close', () => {
+    writeFileHandler(error, req, res, filepath);
+  });
+
+  req.pipe(limitStream).pipe(writeStream);
 }
 
 function writeFileHandler(err, req, res, filepath) {
   if (err) {
     fs.unlink(filepath, (err) => {});
     res.statusCode = err instanceof LimitExceededError ? 413 : 500;
-    res.end();
+    // TODO: workaround to fix error in test
+    setTimeout(() => res.end(), 300);
     return;
   }
 
   res.statusCode = 201;
   res.end();
+}
+
+function endStreams(...args) {
+  for (const stream of args) {
+    stream.end();
+  }
 }
 
 module.exports = server;

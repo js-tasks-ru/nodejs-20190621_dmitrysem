@@ -73,8 +73,12 @@ describe('4-module-2-task', () => {
         const req = request(
             {uri: 'http://localhost:3001/big.png', method: 'POST'},
             (error, response, body) => {
-              // EPIPE/ECONNRESET error should occur because we try to pipe after res closed
-              if (error && !['ECONNRESET', 'EPIPE'].includes(error.code)) return done(error);
+              if (error) return done(error);
+
+              expect(
+                  response.statusCode,
+                  'статус код ответа сервера 413'
+              ).to.equal(413);
 
               setTimeout(() => {
                 expect(
