@@ -30,10 +30,9 @@ function getHandler(req, res, pathname, filepath) {
 
   const readStream = fs.createReadStream(filepath);
   readStream.on('error', (err) => {
-    if (err.code === 'ENOENT') {
-      res.statusCode = 404;
-      res.end();
-    }
+    res.statusCode = err.code === 'ENOENT' ? 404 : 500;
+    res.end();
+    readStream.destroy();
   });
 
   readStream.pipe(res);
