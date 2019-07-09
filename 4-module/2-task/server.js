@@ -31,18 +31,8 @@ function postHandler(req, res, pathname, filepath) {
     return;
   }
 
-  fs.access(filepath, (errFileNotExist) => {
-    if (errFileNotExist) {
-      writeFile(req, res, filepath);
-    } else {
-      res.statusCode = 409;
-      res.end();
-    }
-  });
-}
-
-function writeFile(req, res, filepath) {
   let error = null;
+  let isFileOpened = false;
 
   function errorHandler(err) {
     error = err || true;
@@ -50,18 +40,23 @@ function writeFile(req, res, filepath) {
   }
 
   const limitStream = new LimitSizeStream({limit: 1000000});
-  const writeStream = fs.createWriteStream(filepath);
+  const writeStream = fs.createWriteStream(filepath, {flags: 'wx'});
   req.on('aborted', errorHandler);
   limitStream.on('error', errorHandler);
-  writeStream.on('error', errorHandler);
-  writeStream.on('close', () => {
-    writeFileHandler(error, req, res, filepath);
+  writeStream.on('error', (err) => {
+    errorHandler(err);
+
+    if (!isFileOpened) {
+      writeStreamOpenErrorHandler(err, req, res);
+    }
   });
+  writeStream.on('open', () => isFileOpened = true);
+  writeStream.on('close', () => writeStreamCloseHandler(error, req, res, filepath));
 
   req.pipe(limitStream).pipe(writeStream);
 }
 
-function writeFileHandler(err, req, res, filepath) {
+function writeStreamCloseHandler(err, req, res, filepath) {
   if (err) {
     fs.unlink(filepath, (err) => {});
     res.statusCode = err instanceof LimitExceededError ? 413 : 500;
@@ -71,6 +66,11 @@ function writeFileHandler(err, req, res, filepath) {
   }
 
   res.statusCode = 201;
+  res.end();
+}
+
+function writeStreamOpenErrorHandler(err, req, res) {
+  res.statusCode = err.code === 'EEXIST' ? 409 : 500;
   res.end();
 }
 
