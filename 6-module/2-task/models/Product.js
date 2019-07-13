@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const connection = require('../libs/connection');
+const {defaultSchemaOptions} = require('./utils');
 
 const productSchema = new mongoose.Schema({
   title: {
@@ -30,6 +31,6 @@ const productSchema = new mongoose.Schema({
 
   images: [String],
 
-});
+}, defaultSchemaOptions);
 
 module.exports = connection.model('Product', productSchema);
