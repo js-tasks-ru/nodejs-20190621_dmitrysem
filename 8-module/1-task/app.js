@@ -72,8 +72,8 @@ router.post('/oauth_callback', handleMongooseValidationError, oauthCallback);
 
 router.get('/me', mustBeAuthenticated, me);
 
-router.post('/register' /* TODO */);
-router.post('/confirm' /* TODO */);
+router.post('/register', register);
+router.post('/confirm', confirm);
 
 app.use(router.routes());
 
